@@ -26,8 +26,8 @@ git clone <repo-url>
 ## 3. Navigate into the project folder:
 
 ```bash
-cd zesty-frontend
-cd zesty
+cd esd-frontend
+cd esd
 ```
 
 ## 4. Create a New Branch
