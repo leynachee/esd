@@ -1,0 +1,39 @@
+version: "3.8"
+
+services:
+
+  contract_db:
+    image: mysql:8.0
+    container_name: contract_db
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: contract_db
+      MYSQL_USER: contract_user
+      MYSQL_PASSWORD: contract_pass
+    ports:
+      - "3307:3306"
+    volumes:
+      - contract_db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  contract_service:
+    build: 
+      context: .
+      dockerfile: contract.Dockerfile
+    container_name: contract_service
+    ports:
+      - "5003:5000"
+    environment:
+      PYTHONUNBUFFERED: 1
+    env_file:
+      - .env
+    depends_on:
+      contract_db:
+        condition: service_healthy
+
+volumes:
+  contract_db_data:
