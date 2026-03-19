@@ -3,7 +3,7 @@ from app.models.contract_model import Contract
 from sqlalchemy.exc import IntegrityError
 
 REQUIRED_FIELDS = [
-    "event_id", "client_id", "freelancer_id",
+    "event_id", "user_id",
     "event_wage", "user_bank_account", "payment_reference"
 ]
 
@@ -19,26 +19,24 @@ def validate_payload(data: dict):
 
 def create_contract(data: dict):
     """
-    Creates a new contract and saves it to the DB.
+    Creates a new contract and saves it to DB.
     Returns (result_dict, http_status_code).
     """
-
-    # Idempotency: if contract already exists, return it instead of duplicating
+    # Idempotency: return existing contract if already created
     existing = Contract.query.filter_by(
         event_id=data["event_id"],
-        freelancer_id=data["freelancer_id"]
+        user_id=data["user_id"]
     ).first()
 
     if existing:
         result = existing.to_dict()
-        result["message"] = "Contract already exists for this event and freelancer."
+        result["message"] = "Contract already exists for this event and user."
         return result, 200
 
     # Create new contract
     contract = Contract(
         event_id          = data["event_id"],
-        client_id         = data["client_id"],
-        freelancer_id     = data["freelancer_id"],
+        user_id           = data["user_id"],
         event_wage        = data["event_wage"],
         user_bank_account = data["user_bank_account"],
         payment_reference = data["payment_reference"],
@@ -49,11 +47,10 @@ def create_contract(data: dict):
         db.session.add(contract)
         db.session.commit()
     except IntegrityError:
-        # Handles rare case of two identical requests at the exact same time
         db.session.rollback()
         existing = Contract.query.filter_by(
             event_id=data["event_id"],
-            freelancer_id=data["freelancer_id"]
+            user_id=data["user_id"]
         ).first()
         return existing.to_dict(), 200
 
@@ -69,6 +66,6 @@ def get_contract_by_id(contract_id: int):
 
 
 def get_contracts_by_event(event_id: int):
-    """Fetch all contracts belonging to a given event."""
+    """Fetch all contracts for a given event."""
     contracts = Contract.query.filter_by(event_id=event_id).all()
     return [c.to_dict() for c in contracts]

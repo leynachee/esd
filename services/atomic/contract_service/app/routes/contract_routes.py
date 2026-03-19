@@ -9,10 +9,14 @@ from app.services.contract_service import (
 contract_bp = Blueprint("contracts", __name__)
 
 
-@contract_bp.route("/health", methods=["GET"])
+@contract_bp.route("/contract/health", methods=["GET"])
 def health():
     """Quick check that the service is alive."""
-    return jsonify({"status": "ok", "service": "contract-service"}), 200
+    return jsonify({
+        "status":  "ok",
+        "service": "contract-service",
+        "port":    5000
+    }), 200
 
 
 @contract_bp.route("/contracts", methods=["POST"])

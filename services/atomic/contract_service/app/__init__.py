@@ -14,7 +14,7 @@ def create_app():
     app.register_blueprint(contract_bp)
 
     with app.app_context():
-        from app.models.contract_model import Contract  # ← ADD THIS LINE
+        from app.models.contract_model import Contract
         db.create_all()
 
     return app
