@@ -4,7 +4,7 @@ from sqlalchemy.exc import IntegrityError
 
 REQUIRED_FIELDS = [
     "event_id", "user_id",
-    "event_wage", "user_bank_account", "payment_reference"
+    "event_wage", "user_bank_account"
 ]
 
 def validate_payload(data: dict):
@@ -39,7 +39,6 @@ def create_contract(data: dict):
         user_id           = data["user_id"],
         event_wage        = data["event_wage"],
         user_bank_account = data["user_bank_account"],
-        payment_reference = data["payment_reference"],
         status            = "ACTIVE"
     )
 

@@ -9,7 +9,6 @@ class Contract(db.Model):
     user_id           = db.Column(db.Integer, nullable=False)
     event_wage        = db.Column(db.Numeric(10, 2), nullable=False)
     user_bank_account = db.Column(db.String(100), nullable=False)
-    payment_reference = db.Column(db.String(255), nullable=False)
     status            = db.Column(db.String(20), nullable=False, default="ACTIVE")
     created_at        = db.Column(db.DateTime, default=datetime.now)
     updated_at        = db.Column(db.DateTime, default=datetime.now,
