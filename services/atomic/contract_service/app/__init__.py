@@ -13,8 +13,4 @@ def create_app():
     from app.routes.contract_routes import contract_bp
     app.register_blueprint(contract_bp)
 
-    with app.app_context():
-        from app.models.contract_model import Contract
-        db.create_all()
-
     return app

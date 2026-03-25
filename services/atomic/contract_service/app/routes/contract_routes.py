@@ -6,12 +6,18 @@ from app.services.contract_service import (
     validate_payload
 )
 
+# Blueprint groups all contract-related routes together
+# Registered in app/__init__.py
 contract_bp = Blueprint("contracts", __name__)
 
 
 @contract_bp.route("/contract/health", methods=["GET"])
 def health():
-    """Quick check that the service is alive."""
+    """
+    Health check endpoint.
+    Used by Docker and teammates to verify the service is running.
+    Usage: GET /contract/health
+    """
     return jsonify({
         "status":  "ok",
         "service": "contract-service",
@@ -22,13 +28,27 @@ def health():
 @contract_bp.route("/contracts", methods=["POST"])
 def create():
     """
-    Called by Accept Gig orchestrator — Scenario 3 Step 8.
-    Creates a gig contract after escrow payment is confirmed.
+    Creates a new gig contract.
+    Called by Accept Gig orchestrator in Scenario 3 Step 8,
+    after escrow payment is confirmed by Payment Service.
+
+    Expected JSON body:
+    {
+        "EventID": 101,
+        "UserID": 42,
+        "EventWage": 500.00,
+        "UserBankAccount": "DBS-9876543210"
+    }
+
+    Returns 201 if created, 200 if already exists (idempotency).
     """
     data = request.get_json(silent=True)
+
+    # Guard: request body must be valid JSON
     if not data:
         return jsonify({"error": "Request body must be valid JSON"}), 400
 
+    # Guard: validate all required fields
     error = validate_payload(data)
     if error:
         return jsonify({"error": error}), 400
@@ -39,7 +59,11 @@ def create():
 
 @contract_bp.route("/contracts/<int:contract_id>", methods=["GET"])
 def get_by_id(contract_id):
-    """Fetch a single contract by its ID."""
+    """
+    Fetches a single contract by its ContractID.
+    Usage: GET /contracts/1
+    Returns 404 if contract does not exist.
+    """
     result, status_code = get_contract_by_id(contract_id)
     return jsonify(result), status_code
 
@@ -47,11 +71,13 @@ def get_by_id(contract_id):
 @contract_bp.route("/contracts", methods=["GET"])
 def get_by_event():
     """
-    Fetch all contracts for an event.
-    Usage: GET /contracts?event_id=101
+    Fetches all contracts for a given event.
+    Useful for checking all freelancers contracted under one event.
+    Usage: GET /contracts?EventID=101
+    Returns 400 if EventID query param is missing.
     """
-    event_id = request.args.get("event_id", type=int)
+    event_id = request.args.get("EventID", type=int)
     if not event_id:
-        return jsonify({"error": "Query param 'event_id' is required"}), 400
+        return jsonify({"error": "Query param 'EventID' is required"}), 400
     contracts = get_contracts_by_event(event_id)
     return jsonify(contracts), 200
