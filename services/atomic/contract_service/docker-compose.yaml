@@ -1,0 +1,20 @@
+version: "3.8"
+
+services:
+
+  contract_service:
+    build: 
+      context: .
+      dockerfile: contract.Dockerfile
+    image: contract_service:latest
+    container_name: contract_service
+    ports:
+      - "5004:5000"
+    environment:
+      PYTHONUNBUFFERED: 1
+    env_file:
+      - .env
+    restart: unless-stopped
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
