@@ -1,5 +1,5 @@
-from datetime import datetime
 from app import db
+
 
 class Contract(db.Model):
     """
@@ -10,26 +10,26 @@ class Contract(db.Model):
     __tablename__ = "contracts"
 
     # --- Primary Key ---
-    # Auto-generated unique ID for each contract
+    # Auto-generated unique ID for each contract (Supabase: int4)
     ContractID      = db.Column(db.Integer, primary_key=True, autoincrement=True)
 
     # --- Core Fields ---
-    # EventID: which gig/job this contract is for (references Job Service)
-    EventID         = db.Column(db.Integer, nullable=False)
+    # EventID: which gig/job this contract is for (Supabase: int8)
+    EventID         = db.Column(db.BigInteger, nullable=False)
 
-    # UserID: which freelancer is being contracted (references User Service)
-    UserID          = db.Column(db.Integer, nullable=False)
+    # UserID: which freelancer is being contracted (Supabase: int8)
+    UserID          = db.Column(db.BigInteger, nullable=False)
 
-    # EventWage: how much the freelancer will be paid
-    EventWage       = db.Column(db.Numeric(10, 2), nullable=False)
+    # EventWage: how much the freelancer will be paid (Supabase: float8)
+    EventWage       = db.Column(db.Float, nullable=False)
 
     # UserBankAccount: freelancer's bank account to receive payment
     UserBankAccount = db.Column(db.String(100), nullable=False)
 
     # --- Timestamps ---
-    CreatedAt       = db.Column(db.DateTime, default=datetime.now)
-    UpdatedAt       = db.Column(db.DateTime, default=datetime.now,
-                                onupdate=datetime.now)
+    CreatedAt       = db.Column(db.DateTime, server_default=db.func.now())
+    UpdatedAt       = db.Column(db.DateTime, server_default=db.func.now(),
+                                onupdate=db.func.now())
 
     __table_args__ = (
         db.UniqueConstraint("EventID", "UserID", name="uq_event_user"),
@@ -46,5 +46,6 @@ class Contract(db.Model):
             "UserID":          self.UserID,
             "EventWage":       float(self.EventWage),
             "UserBankAccount": self.UserBankAccount,
-            "CreatedAt":       self.CreatedAt.isoformat() + "Z",
+            "CreatedAt":       self.CreatedAt.isoformat() + "Z" if self.CreatedAt else None,
+            "UpdatedAt":       self.UpdatedAt.isoformat() + "Z" if self.UpdatedAt else None,
         }

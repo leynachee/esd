@@ -9,6 +9,7 @@ REQUIRED_FIELDS = [
     "EventWage", "UserBankAccount"
 ]
 
+
 def validate_payload(data: dict):
     """
     Validates the incoming request body.
@@ -18,15 +19,24 @@ def validate_payload(data: dict):
     for field in REQUIRED_FIELDS:
         if field not in data or data[field] in (None, ""):
             return f"Missing required field: {field}"
-    if float(data.get("EventWage", 0)) <= 0:
+
+    # Safely check EventWage is a positive number
+    try:
+        wage = float(data["EventWage"])
+    except (ValueError, TypeError):
+        return "EventWage must be a valid number"
+
+    if wage <= 0:
         return "EventWage must be greater than 0"
+
     return None
 
 
 def create_contract(data: dict):
     """
     Main logic for creating a gig contract.
-    Called by Scenario 3 Step 8 via the orchestrator.
+    Called by Scenario 3 Step 8 via the Accept Gig orchestrator,
+    after escrow payment is confirmed by Payment Service.
 
     Steps:
     1. Check if contract already exists (idempotency)
@@ -69,7 +79,9 @@ def create_contract(data: dict):
             EventID=data["EventID"],
             UserID=data["UserID"]
         ).first()
-        return existing.to_dict(), 200
+        if existing:
+            return existing.to_dict(), 200
+        return {"error": "Failed to create contract"}, 500
 
     # --- Step 3: Return Created Contract ---
     return contract.to_dict(), 201
@@ -80,7 +92,8 @@ def get_contract_by_id(contract_id: int):
     Fetches a single contract by its ContractID.
     Returns 404 if not found.
     """
-    contract = Contract.query.get(contract_id)
+    # db.session.get() replaces the deprecated Contract.query.get()
+    contract = db.session.get(Contract, contract_id)
     if not contract:
         return {"error": "Contract not found"}, 404
     return contract.to_dict(), 200
@@ -92,4 +105,13 @@ def get_contracts_by_event(event_id: int):
     Useful for checking how many freelancers were contracted for an event.
     """
     contracts = Contract.query.filter_by(EventID=event_id).all()
+    return [c.to_dict() for c in contracts]
+
+
+def get_contracts_by_user(user_id: int):
+    """
+    Fetches all contracts for a given UserID (freelancer).
+    Useful for the freelancer dashboard — shows 'Gigs I'm Working On'.
+    """
+    contracts = Contract.query.filter_by(UserID=user_id).all()
     return [c.to_dict() for c in contracts]

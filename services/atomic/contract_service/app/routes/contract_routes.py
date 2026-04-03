@@ -3,6 +3,7 @@ from app.services.contract_service import (
     create_contract,
     get_contract_by_id,
     get_contracts_by_event,
+    get_contracts_by_user,
     validate_payload
 )
 
@@ -80,4 +81,15 @@ def get_by_event():
     if not event_id:
         return jsonify({"error": "Query param 'EventID' is required"}), 400
     contracts = get_contracts_by_event(event_id)
+    return jsonify(contracts), 200
+
+
+@contract_bp.route("/contracts/user/<int:user_id>", methods=["GET"])
+def get_by_user(user_id):
+    """
+    Fetches all contracts for a given freelancer (UserID).
+    Useful for the dashboard 'Gigs I'm Working On' section.
+    Usage: GET /contracts/user/42
+    """
+    contracts = get_contracts_by_user(user_id)
     return jsonify(contracts), 200
