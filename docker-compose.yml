@@ -1,0 +1,25 @@
+waitlist-atomic-service:
+    build:
+      context: ./services/atomic/waitlist_service
+    ports:
+      - "5001:5001"
+    environment:
+      - PORT=5001
+      - SUPABASE_URL=https://your-project-id.supabase.co
+      - SUPABASE_SERVICE_ROLE_KEY=your-super-secret-service-key
+    networks:
+      - esd-net
+
+    # Scenario 1 Orchestrator
+job-orchestrator:
+    build:
+      context: ./services/composite/job_orchestrator
+    ports:
+      - "5010:5010"  # Frontend will POST to http://localhost:5010/api/orchestrator/jobs
+    environment:
+      - JOB_SVC_URL=http://job-service:5002
+      - USER_SVC_URL=http://user-service:5005 # Change if using a different port/name
+    networks:
+      - esd-net
+    depends_on:
+      - job-service
