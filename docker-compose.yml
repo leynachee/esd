@@ -15,6 +15,7 @@ services:
     ports: ["5002:5002"]
     environment:
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - DB_URL=${DB_URL}
     networks:
       - esd-net
 
