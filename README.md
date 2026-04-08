@@ -204,11 +204,12 @@ The project uses Docker Compose to start all services together. A typical setup 
 
 ## Setup Instructions
 
-### 1. Clone the repository
+### 1. Clone the repository and add a .env file
 ```bash
 git clone <your-repo-url>
 cd <your-project-folder>
 ```
+Add a .env in root folder containing your Stripe Api secret key and your database URL
 
 ### 2. Start up backend
 ```bash
