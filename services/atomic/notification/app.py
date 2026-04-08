@@ -1,16 +1,18 @@
-from flask import Flask, request, jsonify
+import pika
+import json
+import os
+from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
-import os
+import amqp_setup
+import time
 
+# 1. Database Setup
 app = Flask(__name__)
-
-# Database configuration
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DB_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
-# --- ERD Model Mapping ---
 class Notification(db.Model):
     __tablename__ = 'notifications'
     NotificationID = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
@@ -19,75 +21,67 @@ class Notification(db.Model):
     Message = db.Column(db.Text, nullable=False)
     Type = db.Column(db.String(100))
     IsRead = db.Column(db.Boolean, default=False)
-    CreatedAt = db.Column(db.DateTime(timezone=True), default=datetime.utcnow)
+    # Use timezone-aware UTC for best practice
+    CreatedAt = db.Column(db.DateTime, default=datetime.utcnow)
 
-    def to_dict(self):
-        return {
-            "NotificationID": self.NotificationID,
-            "UserID": str(self.UserID),
-            "EventID": self.EventID,
-            "Message": self.Message,
-            "Type": self.Type,
-            "IsRead": self.IsRead,
-            "CreatedAt": self.CreatedAt.isoformat()
-        }
-
-# --- Shared Logic Helper ---
-def create_notification_entry(data, message, notif_type):
+# 2. Updated Callback with REAL logic
+def callback(ch, method, properties, body):
     try:
-        # Use .get() with Capitalized keys to match your class/DB
-        new_notif = Notification(
-            UserID=data.get('UserID') or data.get('userID'),
-            EventID=data.get('EventID') or data.get('eventID'),
-            Message=message,
-            Type=notif_type
-        )
-        db.session.add(new_notif)
-        db.session.commit()
-        return jsonify({"success": True, "notification": new_notif.to_dict()}), 201
+        print("\n[NOTIFICATION RECEIVED]")
+        data = json.loads(body)
+        
+        # We need the app_context to perform database operations
+        with app.app_context():
+            new_notif = Notification(
+                UserID=data.get('UserID'),
+                EventID=data.get('EventID'),
+                Message=data.get('Message'),
+                Type=data.get('Type', 'General')
+            )
+            db.session.add(new_notif)
+            db.session.commit()
+            print(f"Successfully saved notification for User {data.get('UserID')}")
+
+        # Acknowledge success to RabbitMQ
+        ch.basic_ack(delivery_tag=method.delivery_tag)
+
     except Exception as e:
-        db.session.rollback()
-        print(f"NOTIF ERROR: {str(e)}") # Check docker logs for this!
-        return jsonify({"error": str(e)}), 500
+        print(f"Notification processing failed: {e}")
+        # Send to Error Queue (DLX) instead of crashing
+        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
-# --- Routes (Matching your Node.js logic) ---
-@app.route('/notifications', methods=['POST'])
-def create_notification():
-    data = request.get_json()
-    new_notif = Notification(
-        UserID=data.get('UserID'),
-        EventID=data.get('EventID'),
-        Message=data.get('Message'),
-        Type=data.get('Type')
-    )
-    db.session.add(new_notif)
-    db.session.commit()
-    return jsonify({"success": True}), 201
+# 3. Start the Consumer
+def start_notifications():
+    print("Connecting to RabbitMQ...")
+    connection = None
+    while connection is None:
+        try:
+            connection = pika.BlockingConnection(amqp_setup.parameters)
+        except pika.exceptions.AMQPConnectionError:
+            print("RabbitMQ not ready, retrying in 5 seconds...")
+            time.sleep(5)    
+            
+    channel = connection.channel()
+    
+    # Declare the Topic Exchange
+    channel.exchange_declare(exchange=amqp_setup.ex_name, exchange_type='topic', durable=True)
 
-@app.route('/notifications/job-created', methods=['POST'])
-def job_created():
-    data = request.get_json()
-    msg = data.get('Message') or data.get('message') or 'Your job post has been created successfully!'
-    u_id = data.get('UserID') or data.get('userID')
-    e_id = data.get('EventID') or data.get('eventID')
-    return create_notification_entry(u_id, e_id, msg, 'job-created')
+    # Dead Letter Exchange Configuration
+    main_queue_args = {
+        'x-dead-letter-exchange': 'dead_letter_ex',
+        'x-dead-letter-routing-key': 'service.error'
+    }
+    
+    # Declare and Bind
+    channel.queue_declare(queue="Notification_Queue", durable=True, arguments=main_queue_args)
+    channel.queue_bind(exchange=amqp_setup.ex_name, queue="Notification_Queue", routing_key="*.info")
 
-@app.route('/notifications/waitlist-joined', methods=['POST'])
-def waitlist_joined():
-    data = request.get_json()
-    msg = data.get('Message') or data.get('message') or 'You have been successfully added to the waitlist!'
-    u_id = data.get('UserID') or data.get('userID')
-    e_id = data.get('EventID') or data.get('eventID')
-    return create_notification_entry(u_id, e_id, msg, 'waitlist-joined')
+    # Set prefetch to 1 so the worker isn't overwhelmed
+    channel.basic_qos(prefetch_count=1)
+    channel.basic_consume(queue="Notification_Queue", on_message_callback=callback)
 
-@app.route('/notifications/job-accepted', methods=['POST'])
-def job_accepted():
-    data = request.get_json()
-    msg = data.get('Message') or data.get('message') or 'Congratulations! You have been accepted for the job!'
-    u_id = data.get('UserID') or data.get('userID')
-    e_id = data.get('EventID') or data.get('eventID')
-    return create_notification_entry(u_id, e_id, msg, 'job-accepted')
+    print("Notification Service is waiting for events. To exit press CTRL+C")
+    channel.start_consuming()
 
 if __name__ == '__main__':
-    # Defaulting to 5003 for the Notifications Service
-    app.run(host='0.0.0.0', port=5003, debug=True)
+    start_notifications()

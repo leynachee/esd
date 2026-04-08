@@ -1,16 +1,19 @@
-# Use a slim Python image
 FROM python:3.9-slim
+
+# Necessary if you use psycopg2 for Supabase
+RUN apt-get update && apt-get install -y \
+    python3-dev \
+    libpq-dev \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Install dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the source code
-COPY app.py .
+# This line is key: it copies app.py AND amqp_setup.py into the image
+COPY . .
 
-# Expose the port (Update this per service if needed)
-EXPOSE 8082
-
-CMD ["python", "app.py"]
+# -u ensures you see "RabbitMQ not ready" logs immediately
+CMD [ "python", "-u", "./app.py" ]
