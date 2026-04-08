@@ -1,92 +1,92 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
-    Briefcase, Clock, CheckCircle, XCircle,
-    PlusCircle, TrendingUp, DollarSign, Users,
+    Briefcase, Clock, CheckCircle,
+    PlusCircle, DollarSign, Users,
     Eye, Edit, Trash2, MessageSquare
 } from 'lucide-react';
 import Button from '../components/common/Button';
-import { featuredGigs } from '../constants/mockData';
+import { useJobs } from '../hooks/useJobs';
+import { useAuthStore } from '../store/useAuthStore';
+
+const APPLIED_KEY = (userId) => `freelancehub_applied_${userId}`;
+const getAppliedGigIds = (userId) => {
+    try {
+        const saved = localStorage.getItem(APPLIED_KEY(userId));
+        return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+};
 
 const Dashboard = () => {
-    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('posted');
 
-    // Mock user data
-    const user = {
-        name: 'John Doe',
-        role: 'Client & Freelancer',
-    };
+    const user = useAuthStore((state) => state.user);
+    const { data: allJobs, isLoading: jobsLoading } = useJobs();
 
-    // Use actual gigs from mockData instead of hardcoded data
-    const postedGigs = [
-        {
-            id: 1,  // Wedding Photography - from featuredGigs
-            title: 'Wedding Photography Needed',
-            budget: 1500,
-            applicants: 8,
-            status: 'reviewing',
-            postedAt: '2 days ago',
-            category: 'Photography',
-        },
-        {
-            id: 2,  // Mobile App UI/UX Design - from featuredGigs
-            title: 'Website Redesign',
-            budget: 3500,
-            applicants: 15,
-            status: 'in_progress',
-            postedAt: '1 week ago',
-            category: 'Design',
-            freelancer: 'Alex Chen',
-        },
-    ];
+    // Jobs this user posted (ClientID matches)
+    const postedGigs = allJobs
+        ? allJobs
+            .filter((job) => String(job.ClientID) === String(user?.id))
+            .map((job) => ({
+                id: job.EventID,
+                title: job.EventType,
+                budget: job.EventWage,
+                applicants: 0,
+                status: job.EventStatus === 'Open' ? 'reviewing' : 'in_progress',
+                postedAt: job.EventStartDate || 'Recently',
+                category: job.EventType,
+                freelancer: job.FreelancerID ? `Freelancer #${job.FreelancerID}` : null,
+            }))
+        : [];
 
-    const workingGigs = [
-        {
-            id: 1,  // Using featuredGigs ID 1 (Wedding Photography)
-            contractId: 1,  // Contract ID for routing
-            title: 'Corporate Event Coverage',
-            budget: 2000,
-            client: 'Sarah M.',
-            status: 'in_progress',
-            currentPhase: 'Event Coverage',
-            phaseNumber: 2,
-            totalPhases: 3,
-            daysLeft: 3,
-            category: 'Photography',
-        },
-    ];
+    // Jobs this user is working on (FreelancerID matches, In Progress)
+    const workingGigs = allJobs
+        ? allJobs
+            .filter((job) => String(job.FreelancerID) === String(user?.id) && job.EventStatus === 'In Progress')
+            .map((job) => ({
+                id: job.EventID,
+                contractId: job.EventID,
+                title: job.EventType,
+                budget: job.EventWage,
+                client: `Client #${job.ClientID}`,
+                status: 'in_progress',
+                currentPhase: 'In Progress',
+                phaseNumber: 1,
+                totalPhases: 1,
+                daysLeft: job.EventDueDate
+                    ? Math.max(0, Math.ceil((new Date(job.EventDueDate) - new Date()) / (1000 * 60 * 60 * 24)))
+                    : '?',
+                category: job.EventType,
+            }))
+        : [];
 
-    const pendingApplications = [
-        {
-            id: 1,  // Application ID
-            gigId: 4,  // Social Media Manager (from featuredGigs)
-            title: 'Social Media Manager',
-            budget: 1200,
-            client: 'StyleHub',
-            appliedAt: '2 days ago',
-            status: 'under_review',
-            category: 'Marketing',
-        },
-        {
-            id: 2,  // Application ID
-            gigId: 6,  // Video Editor for YouTube Channel (from featuredGigs)
-            title: 'Video Editor for YouTube Channel',
-            budget: 600,
-            client: 'CreatorStudio',
-            appliedAt: '5 days ago',
-            status: 'under_review',
-            category: 'Video',
-        },
-    ];
+    // Gigs the user has applied to (stored in localStorage, cross-referenced with job data)
+    const appliedGigIds = user ? getAppliedGigIds(user.id) : [];
+    const appliedGigs = allJobs
+        ? allJobs
+            .filter((job) =>
+                appliedGigIds.includes(job.EventID) &&
+                String(job.ClientID) !== String(user?.id) &&
+                !(String(job.FreelancerID) === String(user?.id) && job.EventStatus === 'In Progress')
+            )
+            .map((job) => ({
+                id: job.EventID,
+                gigId: job.EventID,
+                title: job.EventType,
+                budget: job.EventWage,
+                client: `Client #${job.ClientID}`,
+                status: String(job.FreelancerID) === String(user?.id) ? 'accepted' : 'under_review',
+                appliedAt: job.EventStartDate || 'Recently',
+                category: job.EventType,
+            }))
+        : [];
 
-    // Mock stats
     const stats = {
         gigsPosted: postedGigs.length,
         gigsWorking: workingGigs.length,
-        applicationsPending: pendingApplications.length,
-        totalEarned: 4500,
-        totalSpent: 1800,
+        applicationsPending: appliedGigs.length,
+        totalEarned: 0,
+        totalSpent: 0,
     };
 
     const getStatusBadge = (status) => {
@@ -95,13 +95,15 @@ const Dashboard = () => {
             in_progress: 'bg-yellow-500 bg-opacity-20 text-yellow-300 border border-yellow-400',
             completed: 'bg-green-500 bg-opacity-20 text-green-300 border border-green-400',
             under_review: 'bg-gray-500 bg-opacity-20 text-gray-300 border border-gray-400',
+            accepted: 'bg-green-500 bg-opacity-20 text-green-300 border border-green-400',
         };
 
         const labels = {
             reviewing: 'Reviewing Applications',
             in_progress: 'In Progress',
             completed: 'Completed',
-            under_review: 'Under Review',
+            under_review: 'Pending',
+            accepted: 'Accepted',
         };
 
         return (
@@ -126,21 +128,13 @@ const Dashboard = () => {
         }
     };
 
-    const handleWithdrawApplication = (appId, gigTitle) => {
-        if (window.confirm(`Are you sure you want to withdraw your application for "${gigTitle}"?`)) {
-            // TODO: Connect to backend API
-            alert(`Application withdrawn for "${gigTitle}". (Will be connected to backend)`);
-            // In production: await apiClient.delete(`/applications/${appId}`);
-        }
-    };
-
     return (
         <div className="min-h-screen bg-dark-200 py-8">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 {/* Header */}
                 <div className="mb-8">
                     <h1 className="text-4xl font-bold text-gold-300 mb-2">Dashboard</h1>
-                    <p className="text-gray-400">Welcome back, {user.name}</p>
+                    <p className="text-gray-400">Welcome back, {user?.name || 'User'}</p>
                 </div>
 
                 {/* Quick Actions */}
@@ -238,7 +232,7 @@ const Dashboard = () => {
                             : 'text-gray-400 hover:text-gray-100'
                             }`}
                     >
-                        Applied ({stats.applicationsPending})
+                            Applied ({appliedGigs.length})
                     </button>
                     <button
                         onClick={() => setActiveTab('completed')}
@@ -253,10 +247,31 @@ const Dashboard = () => {
 
                 {/* Tab Content */}
                 <div className="space-y-4 pb-12">
+                    {/* Loading state */}
+                    {jobsLoading && (
+                        <div className="text-center py-12">
+                            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gold-300 mx-auto"></div>
+                            <p className="text-gray-400 mt-4">Loading...</p>
+                        </div>
+                    )}
+
                     {/* Posted Gigs Tab */}
-                    {activeTab === 'posted' && (
+                    {!jobsLoading && activeTab === 'posted' && (
                         <>
                             <h2 className="text-2xl font-bold text-gold-300 mb-4">Gigs I Posted</h2>
+                            {postedGigs.length === 0 ? (
+                                <div className="text-center py-12 bg-dark-100 border border-dark-50 rounded-lg">
+                                    <Briefcase className="h-16 w-16 text-gray-500 mx-auto mb-4" />
+                                    <h3 className="text-xl font-semibold text-gray-400 mb-2">No Gigs Posted Yet</h3>
+                                    <p className="text-gray-500 mb-4">Post your first gig to start finding freelancers</p>
+                                    <Link to="/post-gig">
+                                        <Button className="flex items-center gap-2 mx-auto">
+                                            <PlusCircle className="h-4 w-4" />
+                                            Post a Gig
+                                        </Button>
+                                    </Link>
+                                </div>
+                            ) : null}
                             {postedGigs.map((gig) => (
                                 <div key={gig.id} className="bg-dark-100 border border-dark-50 rounded-lg p-6 hover:border-gold-400 transition-colors">
                                     <div className="flex items-start justify-between mb-4">
@@ -319,9 +334,19 @@ const Dashboard = () => {
                     )}
 
                     {/* Working On Tab */}
-                    {activeTab === 'working' && (
+                    {!jobsLoading && activeTab === 'working' && (
                         <>
                             <h2 className="text-2xl font-bold text-gold-300 mb-4">Gigs I'm Working On</h2>
+                            {workingGigs.length === 0 ? (
+                                <div className="text-center py-12 bg-dark-100 border border-dark-50 rounded-lg">
+                                    <Clock className="h-16 w-16 text-gray-500 mx-auto mb-4" />
+                                    <h3 className="text-xl font-semibold text-gray-400 mb-2">Not Working on Any Gigs</h3>
+                                    <p className="text-gray-500 mb-4">Join a waitlist to start working as a freelancer</p>
+                                    <Link to="/explore">
+                                        <Button variant="secondary" className="mx-auto">Browse Gigs</Button>
+                                    </Link>
+                                </div>
+                            ) : null}
                             {workingGigs.map((gig) => (
                                 <div key={gig.id} className="bg-dark-100 border border-dark-50 rounded-lg p-6 hover:border-gold-400 transition-colors">
                                     <div className="flex items-start justify-between mb-4">
@@ -359,22 +384,16 @@ const Dashboard = () => {
                                     </div>
 
                                     <div className="flex items-center gap-2">
-                                        <Link to={`/contracts/${gig.contractId}`}>
-                                            <Button className="flex items-center gap-2">
-                                                <CheckCircle className="h-4 w-4" />
-                                                Upload Work
+                                        <Link to={`/gigs/${gig.id}`}>
+                                            <Button variant="secondary" className="flex items-center gap-2">
+                                                <Eye className="h-4 w-4" />
+                                                View Gig
                                             </Button>
                                         </Link>
                                         <Link to="/messages">
                                             <Button variant="secondary" className="flex items-center gap-2">
                                                 <MessageSquare className="h-4 w-4" />
                                                 Message Client
-                                            </Button>
-                                        </Link>
-                                        <Link to={`/contracts/${gig.contractId}`}>
-                                            <Button variant="secondary" className="flex items-center gap-2">
-                                                <Eye className="h-4 w-4" />
-                                                View Contract
                                             </Button>
                                         </Link>
                                     </div>
@@ -384,10 +403,20 @@ const Dashboard = () => {
                     )}
 
                     {/* Applications Tab */}
-                    {activeTab === 'applied' && (
+                    {!jobsLoading && activeTab === 'applied' && (
                         <>
-                            <h2 className="text-2xl font-bold text-gold-300 mb-4">Applications Pending</h2>
-                            {pendingApplications.map((app) => (
+                            <h2 className="text-2xl font-bold text-gold-300 mb-4">My Applications</h2>
+                            {appliedGigs.length === 0 ? (
+                                <div className="text-center py-12 bg-dark-100 border border-dark-50 rounded-lg">
+                                    <Users className="h-16 w-16 text-gray-500 mx-auto mb-4" />
+                                    <h3 className="text-xl font-semibold text-gray-400 mb-2">No Applications Yet</h3>
+                                    <p className="text-gray-500 mb-4">Join a waitlist to apply for gigs</p>
+                                    <Link to="/explore">
+                                        <Button variant="secondary" className="mx-auto">Browse Gigs</Button>
+                                    </Link>
+                                </div>
+                            ) : null}
+                            {appliedGigs.map((app) => (
                                 <div key={app.id} className="bg-dark-100 border border-dark-50 rounded-lg p-6 hover:border-gold-400 transition-colors">
                                     <div className="flex items-start justify-between mb-4">
                                         <div className="flex-1">
@@ -404,7 +433,7 @@ const Dashboard = () => {
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            <p className="text-2xl font-bold text-gold-300">SGD {app.budget.toLocaleString()}</p>
+                                            <p className="text-2xl font-bold text-gold-300">SGD {Number(app.budget).toLocaleString()}</p>
                                         </div>
                                     </div>
 
@@ -415,14 +444,6 @@ const Dashboard = () => {
                                                 View Gig
                                             </Button>
                                         </Link>
-                                        <Button 
-                                            variant="secondary" 
-                                            className="flex items-center gap-2 text-red-400 hover:text-red-300"
-                                            onClick={() => handleWithdrawApplication(app.id, app.title)}
-                                        >
-                                            <XCircle className="h-4 w-4" />
-                                            Withdraw Application
-                                        </Button>
                                     </div>
                                 </div>
                             ))}
@@ -430,7 +451,7 @@ const Dashboard = () => {
                     )}
 
                     {/* Completed Tab */}
-                    {activeTab === 'completed' && (
+                    {!jobsLoading && activeTab === 'completed' && (
                         <div className="text-center py-12">
                             <CheckCircle className="h-16 w-16 text-gray-500 mx-auto mb-4" />
                             <h3 className="text-xl font-semibold text-gray-400 mb-2">No Completed Gigs Yet</h3>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, User, Briefcase, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, User, Briefcase, Eye, EyeOff, Phone, CreditCard } from 'lucide-react';
 import Input from '../components/common/Input';
 import Button from '../components/common/Button';
 import { login, register } from '../utils/mockAuth';
@@ -17,6 +17,8 @@ const Auth = () => {
     password: '',
     confirmPassword: '',
     role: 'client', // client or freelancer
+    phone: '',
+    bankAccount: '',
   });
   
   const [showPassword, setShowPassword] = useState(false);
@@ -49,12 +51,11 @@ const Auth = () => {
     }, 500);
   };
 
-  const handleSignup = (e) => {
+  const handleSignup = async (e) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
 
-    // Validate
     if (!signupData.name || !signupData.email || !signupData.password || !signupData.confirmPassword) {
       setError('Please fill in all fields');
       setIsLoading(false);
@@ -73,18 +74,15 @@ const Auth = () => {
       return;
     }
 
-    // Simulate API delay
-    setTimeout(() => {
-      const result = register(signupData);
+    const result = await register(signupData);
 
-      if (result.success) {
-        navigate('/dashboard');
-        window.location.reload(); // Refresh to update auth state
-      } else {
-        setError(result.error);
-      }
-      setIsLoading(false);
-    }, 500);
+    if (result.success) {
+      navigate('/dashboard');
+      window.location.reload();
+    } else {
+      setError(result.error);
+    }
+    setIsLoading(false);
   };
 
   const handleDemoLogin = (role) => {
@@ -269,6 +267,29 @@ const Auth = () => {
                   setError('');
                 }}
                 required
+              />
+
+              <Input
+                label="Phone Number"
+                type="tel"
+                placeholder="+65 9123 4567"
+                icon={Phone}
+                value={signupData.phone}
+                onChange={(e) => {
+                  setSignupData({ ...signupData, phone: e.target.value });
+                  setError('');
+                }}
+              />
+              <Input
+                label="Bank Account Number"
+                type="text"
+                placeholder="e.g. 123-456-789"
+                icon={CreditCard}
+                value={signupData.bankAccount}
+                onChange={(e) => {
+                  setSignupData({ ...signupData, bankAccount: e.target.value });
+                  setError('');
+                }}
               />
 
               <div className="bg-dark-200 border border-dark-50 rounded-lg p-4">

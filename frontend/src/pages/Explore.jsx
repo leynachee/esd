@@ -2,17 +2,30 @@ import { useState } from 'react';
 import { Search, SlidersHorizontal, X } from 'lucide-react';
 import GigCard from '../components/common/GigCard';
 import Button from '../components/common/Button';
-import { featuredGigs } from '../constants/mockData';
+import { useJobs } from '../hooks/useJobs';
+
+const mapJobToGig = (job) => ({
+  id: job.EventID,
+  title: job.EventType,
+  description: `Budget: SGD ${job.EventWage} — Due: ${job.EventDueDate}`,
+  budget: job.EventWage,
+  location: 'Singapore',
+  postedAt: job.EventStartDate || 'Recently',
+  category: job.EventType,
+  clientName: `Client #${job.ClientID}`,
+});
 
 const Explore = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  
+
   // Filter states
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedLocation, setSelectedLocation] = useState('all');
   const [budgetRange, setBudgetRange] = useState({ min: '', max: '' });
   const [sortBy, setSortBy] = useState('newest');
+
+  const { data: jobsData, isLoading, isError } = useJobs();
 
   const categories = [
     'All',
@@ -28,98 +41,7 @@ const Explore = () => {
 
   const locations = ['All', 'Remote', 'Singapore', 'Malaysia', 'Indonesia'];
 
-  // Mock data - in real app, this would be filtered results from API
-  const allGigs = [
-    ...featuredGigs,
-    {
-      id: 7,
-      title: 'Logo Design for Startup',
-      description: 'Need a modern, minimalist logo for a tech startup. Should be versatile and work well in both color and black/white.',
-      budget: 500,
-      location: 'Remote',
-      postedAt: '1 hour ago',
-      category: 'Design',
-      clientName: 'TechStart Inc.',
-      saved: false,
-    },
-    {
-      id: 8,
-      title: 'Python Backend Developer',
-      description: 'Looking for an experienced Python developer to build REST APIs using Flask. Must have experience with PostgreSQL.',
-      budget: 4000,
-      location: 'Remote',
-      postedAt: '3 hours ago',
-      category: 'Development',
-      clientName: 'DevCorp',
-      saved: false,
-    },
-    {
-      id: 9,
-      title: 'Email Marketing Campaign',
-      description: 'Create and execute email marketing campaign for product launch. Includes copywriting and design.',
-      budget: 1500,
-      location: 'Singapore',
-      postedAt: '1 day ago',
-      category: 'Marketing',
-      clientName: 'MarketHub',
-      saved: false,
-    },
-    {
-      id: 10,
-      title: 'Business Plan Writer',
-      description: 'Need help writing a comprehensive business plan for investors. Must include financial projections and market analysis.',
-      budget: 2500,
-      location: 'Singapore',
-      postedAt: '2 hours ago',
-      category: 'Business',
-      clientName: 'StartupCo',
-      saved: false,
-    },
-    {
-      id: 11,
-      title: 'Financial Consultant',
-      description: 'Looking for a financial advisor to help with business restructuring and cost optimization strategies.',
-      budget: 3500,
-      location: 'Remote',
-      postedAt: '5 hours ago',
-      category: 'Business',
-      clientName: 'GrowthPartners',
-      saved: false,
-    },
-    {
-      id: 12,
-      title: 'Music Producer for Podcast Intro',
-      description: 'Need a catchy 30-second intro music for a business podcast. Should be upbeat and professional.',
-      budget: 800,
-      location: 'Remote',
-      postedAt: '1 day ago',
-      category: 'Music',
-      clientName: 'PodcastPro',
-      saved: false,
-    },
-    {
-      id: 13,
-      title: 'Product Photography',
-      description: 'Professional product photography needed for e-commerce store. 50+ products to shoot with white background.',
-      budget: 1200,
-      location: 'Malaysia',
-      postedAt: '3 days ago',
-      category: 'Photography',
-      clientName: 'ShopMart',
-      saved: false,
-    },
-    {
-      id: 14,
-      title: 'Video Editor for YouTube',
-      description: 'Looking for ongoing video editing for weekly YouTube videos. Experience with Adobe Premiere Pro required.',
-      budget: 600,
-      location: 'Indonesia',
-      postedAt: '2 days ago',
-      category: 'Video',
-      clientName: 'ContentKing',
-      saved: false,
-    },
-  ];
+  const allGigs = jobsData ? jobsData.map(mapJobToGig) : [];
 
   // Filter and sort logic
   const filteredGigs = allGigs.filter((gig) => {
@@ -305,7 +227,16 @@ const Explore = () => {
         </div>
 
         {/* Gigs Grid */}
-        {sortedGigs.length > 0 ? (
+        {isLoading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gold-300 mx-auto"></div>
+            <p className="text-gray-400 mt-4">Loading gigs...</p>
+          </div>
+        ) : isError ? (
+          <div className="text-center py-12 bg-dark-100 border border-dark-50 rounded-lg">
+            <p className="text-gray-400 text-lg">Could not load gigs. Make sure the backend is running.</p>
+          </div>
+        ) : sortedGigs.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {sortedGigs.map((gig) => (
               <GigCard key={gig.id} gig={gig} />

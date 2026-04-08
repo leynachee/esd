@@ -3,99 +3,31 @@ import SearchBar from '../components/common/SearchBar';
 import GigCard from '../components/common/GigCard';
 import { ArrowRight, TrendingUp, Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { featuredGigs, topFreelancers } from '../constants/mockData';
+import { useJobs } from '../hooks/useJobs';
+
+// Map backend job object to GigCard-compatible shape
+const mapJobToGig = (job) => ({
+  id: job.EventID,
+  title: job.EventType,
+  description: `Budget: SGD ${job.EventWage} — Due: ${job.EventDueDate}`,
+  budget: job.EventWage,
+  location: 'Singapore',
+  postedAt: job.EventStartDate || 'Recently',
+  category: job.EventType,
+  clientName: `Client #${job.ClientID}`,
+});
 
 const Home = () => {
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const { data: jobsData, isLoading, isError } = useJobs();
 
-  // Extended gig list for more variety (includes all categories)
-  const allGigs = [
-    ...featuredGigs,
-    {
-      id: 7,
-      title: 'Logo Design for Startup',
-      description: 'Need a modern, minimalist logo for a tech startup. Should be versatile and work well in both color and black/white.',
-      budget: 500,
-      location: 'Remote',
-      postedAt: '1 hour ago',
-      category: 'Design',
-      clientName: 'TechStart Inc.',
-      saved: false,
-    },
-    {
-      id: 8,
-      title: 'Python Backend Developer',
-      description: 'Looking for an experienced Python developer to build REST APIs using Flask. Must have experience with PostgreSQL.',
-      budget: 4000,
-      location: 'Remote',
-      postedAt: '3 hours ago',
-      category: 'Development',
-      clientName: 'DevCorp',
-      saved: false,
-    },
-    {
-      id: 9,
-      title: 'Email Marketing Campaign',
-      description: 'Create and execute email marketing campaign for product launch. Includes copywriting and design.',
-      budget: 1500,
-      location: 'Singapore',
-      postedAt: '1 day ago',
-      category: 'Marketing',
-      clientName: 'MarketHub',
-      saved: false,
-    },
-    {
-      id: 10,
-      title: 'Business Plan Writer',
-      description: 'Need help writing a comprehensive business plan for investors. Must include financial projections and market analysis.',
-      budget: 2500,
-      location: 'Singapore',
-      postedAt: '2 hours ago',
-      category: 'Business',
-      clientName: 'StartupCo',
-      saved: false,
-    },
-    {
-      id: 11,
-      title: 'Financial Consultant',
-      description: 'Looking for a financial advisor to help with business restructuring and cost optimization strategies.',
-      budget: 3500,
-      location: 'Remote',
-      postedAt: '5 hours ago',
-      category: 'Business',
-      clientName: 'GrowthPartners',
-      saved: false,
-    },
-    {
-      id: 12,
-      title: 'Music Producer for Podcast Intro',
-      description: 'Need a catchy 30-second intro music for a business podcast. Should be upbeat and professional.',
-      budget: 800,
-      location: 'Remote',
-      postedAt: '1 day ago',
-      category: 'Music',
-      clientName: 'PodcastPro',
-      saved: false,
-    },
-    {
-      id: 14,
-      title: 'Video Editor for YouTube',
-      description: 'Looking for ongoing video editing for weekly YouTube videos. Experience with Adobe Premiere Pro required.',
-      budget: 600,
-      location: 'Indonesia',
-      postedAt: '2 days ago',
-      category: 'Video',
-      clientName: 'ContentKing',
-      saved: false,
-    },
-  ];
+  const allGigs = jobsData ? jobsData.map(mapJobToGig) : [];
 
   const categories = ['All', 'Design', 'Development', 'Writing', 'Marketing', 'Video', 'Photography', 'Music', 'Business'];
 
-  // Filter gigs based on selected category
-  const filteredGigs = selectedCategory === 'All' 
-    ? allGigs.slice(0, 6) // Show first 6 when "All" is selected
-    : allGigs.filter(gig => gig.category === selectedCategory).slice(0, 6); // Show up to 6 from selected category
+  const filteredGigs = selectedCategory === 'All'
+    ? allGigs.slice(0, 6)
+    : allGigs.filter(gig => gig.category === selectedCategory).slice(0, 6);
 
   const handleCategoryClick = (category) => {
     setSelectedCategory(category);
@@ -174,7 +106,16 @@ const Home = () => {
             </Link>
           </div>
 
-          {filteredGigs.length > 0 ? (
+          {isLoading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gold-300 mx-auto"></div>
+              <p className="text-gray-400 mt-4">Loading gigs...</p>
+            </div>
+          ) : isError ? (
+            <div className="text-center py-12 bg-dark-100 border border-dark-50 rounded-lg">
+              <p className="text-gray-400 text-lg">Could not load gigs. Make sure the backend is running.</p>
+            </div>
+          ) : filteredGigs.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredGigs.map((gig) => (
                 <GigCard key={gig.id} gig={gig} />
@@ -195,59 +136,26 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Top Freelancers Section */}
+      {/* CTA Section */}
       <section className="py-12 bg-dark-100 border-y border-dark-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-3xl font-bold text-gold-300">Top Freelancers</h2>
-            <Link 
-              to="/freelancers" 
-              className="flex items-center space-x-2 text-gray-400 hover:text-gold-300 transition-colors"
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-3xl font-bold text-gold-300 mb-4">Ready to Get Started?</h2>
+          <p className="text-gray-400 mb-8 max-w-xl mx-auto">
+            Post a gig as a client or join the waitlist as a freelancer. Payments are handled securely via Stripe.
+          </p>
+          <div className="flex justify-center gap-4 flex-wrap">
+            <Link
+              to="/post-gig"
+              className="px-8 py-3 bg-gold-300 text-dark-200 rounded-lg font-semibold hover:bg-gold-200 transition-colors"
             >
-              <span>View All</span>
-              <ArrowRight className="h-4 w-4" />
+              Post a Gig
             </Link>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {topFreelancers.map((freelancer) => (
-              <div 
-                key={freelancer.id}
-                className="bg-dark-200 border border-dark-50 rounded-lg p-6 hover:border-gold-400 transition-all text-center"
-              >
-                <div className="w-20 h-20 rounded-full bg-gold-300 mx-auto mb-4 flex items-center justify-center text-dark-200 font-bold text-2xl">
-                  {freelancer.name.split(' ').map(n => n[0]).join('')}
-                </div>
-                <h3 className="text-lg font-semibold text-gray-100 mb-1">{freelancer.name}</h3>
-                <p className="text-gray-400 text-sm mb-3">{freelancer.title}</p>
-                
-                <div className="flex items-center justify-center gap-4 text-xs text-gray-500 mb-4">
-                  <div className="flex items-center gap-1">
-                    <Star className="h-3 w-3 text-gold-300 fill-gold-300" />
-                    <span>{freelancer.rating}</span>
-                  </div>
-                  <span>{freelancer.completedGigs} gigs</span>
-                </div>
-
-                <div className="flex flex-wrap gap-2 justify-center mb-4">
-                  {freelancer.skills.slice(0, 3).map((skill) => (
-                    <span 
-                      key={skill}
-                      className="px-2 py-1 bg-dark-100 text-gray-400 text-xs rounded"
-                    >
-                      {skill}
-                    </span>
-                  ))}
-                </div>
-
-                <Link 
-                  to={`/profile/${freelancer.id}`}
-                  className="text-gold-300 text-sm hover:text-gold-200 transition-colors"
-                >
-                  View Profile →
-                </Link>
-              </div>
-            ))}
+            <Link
+              to="/explore"
+              className="px-8 py-3 border border-gold-300 text-gold-300 rounded-lg font-semibold hover:bg-gold-300/10 transition-colors"
+            >
+              Browse Gigs
+            </Link>
           </div>
         </div>
       </section>
