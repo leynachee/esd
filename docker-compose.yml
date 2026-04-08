@@ -27,7 +27,6 @@ services:
   # --- ATOMIC SERVICES ---
   waitlist-service:
     build: ./services/atomic/waitlist
-    # ports: ["5001:5001"] <-- REMOVED: Internal only
     environment:
       - RABBIT_HOST=rabbitmq
       - DB_URL=${DB_URL}
@@ -56,7 +55,6 @@ services:
 
   jobs-service:
     build: ./services/atomic/job
-    # ports: ["5004:5004"] <-- REMOVED: Internal only
     dns:
       - 8.8.8.8
       - 8.8.4.4
@@ -69,12 +67,11 @@ services:
   # --- COMPOSITE SERVICES (Step 2: Routed through Kong only) ---
   job-posting:
     build: ./services/composite/job_posting
-    # ports: ["8080:8080"] <-- REMOVED: Securely routed via Kong
     depends_on:
       - jobs-service
       - notifications-service
     deploy:
-      replicas: 2           # Lab Scaling Requirement
+      replicas: 2         
     environment:
       - RABBIT_HOST=rabbitmq
       - USER_SERVICE_URL=https://personal-c46vfcmj.outsystemscloud.com/UserService/rest
@@ -85,7 +82,6 @@ services:
 
   waitlist-manager:
     build: ./services/composite/waitlist_manager
-    # ports: ["8081:8081"] <-- REMOVED: Securely routed via Kong
     depends_on:
       - jobs-service
       - waitlist-service
@@ -101,7 +97,6 @@ services:
 
   accept-gig:
     build: ./services/composite/accept_gig
-    # ports: ["8082:8082"] <-- REMOVED: Securely routed via Kong
     depends_on:
       - jobs-service
       - payment-service

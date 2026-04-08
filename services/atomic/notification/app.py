@@ -21,16 +21,14 @@ class Notification(db.Model):
     Message = db.Column(db.Text, nullable=False)
     Type = db.Column(db.String(100))
     IsRead = db.Column(db.Boolean, default=False)
-    # Use timezone-aware UTC for best practice
     CreatedAt = db.Column(db.DateTime, default=datetime.utcnow)
 
-# 2. Updated Callback with REAL logic
+# 2. Updated Callback
 def callback(ch, method, properties, body):
     try:
         print("\n[NOTIFICATION RECEIVED]")
         data = json.loads(body)
         
-        # We need the app_context to perform database operations
         with app.app_context():
             new_notif = Notification(
                 UserID=data.get('UserID'),
