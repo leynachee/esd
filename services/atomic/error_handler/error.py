@@ -5,7 +5,6 @@ def callback(ch, method, properties, body):
     try:
         message = json.loads(body)
         print(f"Details: {message}")
-        # In a real app, write to a .txt file here
         with open("error_log.txt", "a") as f:
             f.write(f"Routing Key: {method.routing_key} | Data: {body}\n")
     except Exception as e:

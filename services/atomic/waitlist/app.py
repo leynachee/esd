@@ -3,7 +3,6 @@ from flask_sqlalchemy import SQLAlchemy
 import os
 
 app = Flask(__name__)
-# Replace with your Supabase Connection String
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DB_URL')
 db = SQLAlchemy(app)
 
