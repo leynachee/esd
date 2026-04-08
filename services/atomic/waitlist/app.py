@@ -13,6 +13,16 @@ class Waitlist(db.Model):
     FreelancerID = db.Column(db.BigInteger, nullable=False)
     WaitlistStatus = db.Column(db.String(50), default='Waitlisted')
 
+@app.route('/waitlist/event/<int:event_id>', methods=['GET'])
+def get_waitlist_by_event(event_id):
+    entries = Waitlist.query.filter_by(EventID=event_id).all()
+    return jsonify([{
+        "WaitlistID": e.WaitlistID,
+        "EventID": e.EventID,
+        "FreelancerID": e.FreelancerID,
+        "WaitlistStatus": e.WaitlistStatus
+    } for e in entries]), 200
+
 @app.route('/waitlist', methods=['POST'])
 def create_waitlist():
     data = request.get_json()
