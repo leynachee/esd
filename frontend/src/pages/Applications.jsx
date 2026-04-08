@@ -11,8 +11,8 @@ import {
   Clock
 } from 'lucide-react';
 import { useJobs } from '../hooks/useJobs';
-import { useWaitlistEntries } from '../hooks/useWaitlistEntries';
 import { useAcceptFreelancer } from '../hooks/useAcceptFreelancer';
+import { useWaitlistEntries } from '../hooks/useWaitlistEntries';
 
 const Applications = () => {
   const { gigId } = useParams();
@@ -25,12 +25,10 @@ const Applications = () => {
   const { data: allJobs, isLoading: jobsLoading } = useJobs();
   const job = allJobs?.find(j => String(j.EventID) === String(gigId));
 
-  // Fetch real waitlist entries for this event
-  const { data: waitlistEntries, isLoading: waitlistLoading, isError: waitlistError } = useWaitlistEntries(gigId);
-
+  const { data: waitlistEntries = [], error: waitlistError, isLoading: waitlistLoading } = useWaitlistEntries(gigId);
   const isLoading = jobsLoading || waitlistLoading;
 
-  const filteredEntries = (waitlistEntries || []).filter(entry => {
+  const filteredEntries = waitlistEntries.filter(entry => {
     if (filterStatus === 'all') return true;
     return entry.WaitlistStatus === filterStatus;
   });

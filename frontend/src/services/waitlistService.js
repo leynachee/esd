@@ -1,5 +1,11 @@
 import { waitlistManagerApi, acceptGigApi } from './api';
 
+// Get all waitlist entries for a specific event
+export const getWaitlistEntries = async (eventId) => {
+  const res = await waitlistManagerApi.get(`/waitlist/${eventId}`);
+  return res.data.data ?? res.data;
+};
+
 // Join the waitlist for an event
 // Expects: { EventID, FreelancerID }
 export const joinWaitlist = async (payload) => {
@@ -14,8 +20,3 @@ export const acceptFreelancer = async (payload) => {
   return res.data;
 };
 
-// Get all waitlist entries for a given event
-export const getWaitlistEntries = async (eventId) => {
-  const res = await waitlistManagerApi.get(`/waitlist-entries/${eventId}`);
-  return res.data;
-};

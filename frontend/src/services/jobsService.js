@@ -3,7 +3,7 @@ import { jobPostingApi, waitlistManagerApi } from './api';
 // Fetch all open jobs via Waitlist Manager orchestrator
 export const getOpenJobs = async () => {
   const res = await waitlistManagerApi.get('/available-jobs');
-  return res.data;
+  return res.data.data ?? res.data;
 };
 
 // Post a new job via Job Posting orchestrator

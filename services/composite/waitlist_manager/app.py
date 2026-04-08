@@ -28,6 +28,13 @@ def get_available_jobs():
         "data": result
     }), 200
     
+@app.route('/waitlist/<int:event_id>', methods=['GET'])
+def get_waitlist_entries(event_id):
+    result, code = invoke_http(f"{WAITLIST_SERVICE_URL}/waitlist/event/{event_id}", method='GET')
+    if code not in range(200, 300):
+        return jsonify({"code": code, "message": "Failed to fetch waitlist entries"}), code
+    return jsonify({"code": 200, "data": result}), 200
+
 @app.route('/join-waitlist', methods=['POST'])
 def join_waitlist_flow():
     data = request.get_json()
