@@ -208,3 +208,16 @@ The project uses Docker Compose to start all services together. A typical setup 
 ```bash
 git clone <your-repo-url>
 cd <your-project-folder>
+```
+
+### 2. Start up backend
+```bash
+docker compose up —build
+```
+
+### 3. Start up frontend
+```bash
+cd frontend
+npm install
+npm run dev
+```
