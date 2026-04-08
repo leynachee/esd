@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, DollarSign, MapPin, Briefcase, FileText, Tag, Plus, X } from 'lucide-react';
+import { Calendar, DollarSign, Briefcase, Tag, Plus, X } from 'lucide-react';
 import Input from '../components/common/Input';
 import Button from '../components/common/Button';
+import { usePostJob } from '../hooks/usePostJob';
+import { useAuthStore } from '../store/useAuthStore';
 
 // Common skills database for autocomplete
 const commonSkills = [
@@ -53,6 +55,8 @@ const commonSkills = [
 
 const PostGig = () => {
     const navigate = useNavigate();
+    const { mutate: submitJob, isPending: isSubmitting, error: submitError } = usePostJob();
+    const user = useAuthStore((state) => state.user);
 
     const [formData, setFormData] = useState({
         title: '',
@@ -72,12 +76,6 @@ const PostGig = () => {
     
     const skillInputRef = useRef(null);
     const suggestionsRef = useRef(null);
-
-    const [phases, setPhases] = useState([
-        { id: 1, title: '', description: '', deadline: '', deliverables: [] },
-        { id: 2, title: '', description: '', deadline: '', deliverables: [] },
-        { id: 3, title: '', description: '', deadline: '', deliverables: [] },
-    ]);
 
     const categories = [
         'Design',
@@ -201,85 +199,26 @@ const PostGig = () => {
         setSkills(skills.filter(skill => skill !== skillToRemove));
     };
 
-    const handlePhaseChange = (id, field, value) => {
-        setPhases(phases.map(phase =>
-            phase.id === id ? { ...phase, [field]: value } : phase
-        ));
-    };
-
-    const handleAddPhase = () => {
-        const newId = Math.max(...phases.map(p => p.id)) + 1;
-        setPhases([...phases, { 
-            id: newId, 
-            title: '', 
-            description: '', 
-            deadline: '', 
-            deliverables: [] 
-        }]);
-    };
-
-    const handleRemovePhase = (id) => {
-        if (phases.length > 1) {
-            setPhases(phases.filter(phase => phase.id !== id));
-        }
-    };
-
-    // Add deliverable to phase
-    const handleAddDeliverable = (phaseId) => {
-        setPhases(phases.map(phase => {
-            if (phase.id === phaseId) {
-                return {
-                    ...phase,
-                    deliverables: [...phase.deliverables, '']
-                };
-            }
-            return phase;
-        }));
-    };
-
-    // Update deliverable
-    const handleDeliverableChange = (phaseId, deliverableIndex, value) => {
-        setPhases(phases.map(phase => {
-            if (phase.id === phaseId) {
-                const newDeliverables = [...phase.deliverables];
-                newDeliverables[deliverableIndex] = value;
-                return { ...phase, deliverables: newDeliverables };
-            }
-            return phase;
-        }));
-    };
-
-    // Remove deliverable
-    const handleRemoveDeliverable = (phaseId, deliverableIndex) => {
-        setPhases(phases.map(phase => {
-            if (phase.id === phaseId) {
-                return {
-                    ...phase,
-                    deliverables: phase.deliverables.filter((_, i) => i !== deliverableIndex)
-                };
-            }
-            return phase;
-        }));
-    };
-
     const handleSubmit = (e) => {
         e.preventDefault();
-        
-        // Validate phases
-        const validPhases = phases.filter(p => p.title && p.description && p.deadline);
-        
-        if (validPhases.length === 0) {
-            alert('Please fill in at least one complete phase (title, description, and deadline).');
-            return;
-        }
 
-        console.log('Form Data:', formData);
-        console.log('Skills:', skills);
-        console.log('Phases:', phases);
+        const payload = {
+            userID: user?.id,
+            eventType: formData.category,
+            eventWage: parseFloat(formData.budget),
+            startDate: new Date().toISOString().split('T')[0],
+            dueDate: formData.timeline,
+        };
 
-        // TODO: Connect to backend API
-        alert('Gig posted successfully! (This will be connected to backend)');
-        navigate('/dashboard');
+        submitJob(payload, {
+            onSuccess: () => {
+                alert(`Gig "${formData.category}" posted successfully!`);
+                navigate('/dashboard');
+            },
+            onError: (err) => {
+                alert(`Failed to post gig: ${err.response?.data?.error || err.message}`);
+            },
+        });
     };
 
     return (
@@ -491,118 +430,24 @@ const PostGig = () => {
                         </div>
                     </div>
 
-                    {/* Project Phases */}
-                    <div className="bg-dark-100 border border-dark-50 rounded-lg p-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-xl font-bold text-gold-300">Project Phases</h2>
-                            <Button type="button" onClick={handleAddPhase} variant="secondary" className="flex items-center gap-2">
-                                <Plus className="h-4 w-4" />
-                                Add Phase
-                            </Button>
-                        </div>
-
-                        <p className="text-gray-400 text-sm mb-4">
-                            Break your project into phases for better tracking. Payment will be released upon project completion.
-                        </p>
-
-                        <div className="space-y-4">
-                            {phases.map((phase, index) => (
-                                <div key={phase.id} className="border border-dark-50 rounded-lg p-4">
-                                    <div className="flex gap-3 items-start mb-3">
-                                        <div className="w-8 h-8 rounded-full bg-gold-300 flex items-center justify-center text-dark-200 font-bold text-sm shrink-0">
-                                            {index + 1}
-                                        </div>
-                                        <div className="flex-1 space-y-3">
-                                            <input
-                                                type="text"
-                                                placeholder="Phase title (e.g., Initial Design Draft)"
-                                                value={phase.title}
-                                                onChange={(e) => handlePhaseChange(phase.id, 'title', e.target.value)}
-                                                className="w-full px-4 py-3 bg-dark-200 border border-dark-50 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:border-gold-300 transition-all"
-                                            />
-                                            <textarea
-                                                placeholder="Phase description and what you expect to receive..."
-                                                value={phase.description}
-                                                onChange={(e) => handlePhaseChange(phase.id, 'description', e.target.value)}
-                                                rows="2"
-                                                className="w-full px-4 py-3 bg-dark-200 border border-dark-50 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:border-gold-300 transition-all resize-none"
-                                            />
-                                            <div className="relative">
-                                                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gold-300 h-5 w-5 pointer-events-none z-10" />
-                                                <input
-                                                    type="date"
-                                                    value={phase.deadline}
-                                                    onChange={(e) => handlePhaseChange(phase.id, 'deadline', e.target.value)}
-                                                    className="w-full pl-10 pr-4 py-3 bg-dark-200 border border-dark-50 rounded-lg text-gray-100 focus:outline-none focus:border-gold-300 transition-all"
-                                                />
-                                            </div>
-
-                                            {/* Deliverables */}
-                                            {phase.deliverables.length > 0 && (
-                                                <div className="space-y-2">
-                                                    <label className="text-gray-400 text-sm">Deliverables:</label>
-                                                    {phase.deliverables.map((deliverable, dIndex) => (
-                                                        <div key={dIndex} className="flex gap-2">
-                                                            <input
-                                                                type="text"
-                                                                placeholder="e.g., 5 design mockups"
-                                                                value={deliverable}
-                                                                onChange={(e) => handleDeliverableChange(phase.id, dIndex, e.target.value)}
-                                                                className="flex-1 px-3 py-2 bg-dark-200 border border-dark-50 rounded text-gray-100 placeholder-gray-500 focus:outline-none focus:border-gold-300 text-sm"
-                                                            />
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleRemoveDeliverable(phase.id, dIndex)}
-                                                                className="p-2 text-gray-400 hover:text-red-400 transition-colors"
-                                                            >
-                                                                <X className="h-4 w-4" />
-                                                            </button>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                            
-                                            <button
-                                                type="button"
-                                                onClick={() => handleAddDeliverable(phase.id)}
-                                                className="text-gold-300 text-sm hover:text-gold-200 transition-colors"
-                                            >
-                                                + Add deliverable
-                                            </button>
-                                        </div>
-                                        {phases.length > 1 && (
-                                            <button
-                                                type="button"
-                                                onClick={() => handleRemovePhase(phase.id)}
-                                                className="p-2 text-gray-400 hover:text-red-400 transition-colors"
-                                            >
-                                                <X className="h-5 w-5" />
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
                     {/* Payment Info */}
                     <div className="bg-dark-100 border border-dark-50 rounded-lg p-6">
-                        <h3 className="text-lg font-semibold text-gold-300 mb-3">Payment Protection</h3>
+                        <h3 className="text-lg font-semibold text-gold-300 mb-3">Payment Info</h3>
                         <p className="text-gray-400 text-sm mb-4">
-                            Your payment is protected with our secure escrow system:
+                            How payment works on FreelanceHub:
                         </p>
                         <ul className="space-y-3 text-gray-300">
                             <li className="flex items-start gap-3">
                                 <span className="text-gold-300 mt-0.5">•</span>
-                                <span>Your payment will be held in secure escrow until the project is completed</span>
+                                <span>Freelancers join your waitlist and you review their profiles</span>
                             </li>
                             <li className="flex items-start gap-3">
                                 <span className="text-gold-300 mt-0.5">•</span>
-                                <span>Freelancer only receives payment after you approve all deliverables</span>
+                                <span>When you accept a freelancer, payment is triggered immediately via Stripe</span>
                             </li>
                             <li className="flex items-start gap-3">
                                 <span className="text-gold-300 mt-0.5">•</span>
-                                <span>Auto-approval in 5 days if no response to protect both parties</span>
+                                <span>The accepted freelancer is notified and the gig moves to In Progress</span>
                             </li>
                         </ul>
                     </div>
@@ -617,8 +462,8 @@ const PostGig = () => {
                         >
                             Cancel
                         </Button>
-                        <Button type="submit" className="flex-1">
-                            Post Gig
+                        <Button type="submit" className="flex-1" disabled={isSubmitting}>
+                            {isSubmitting ? 'Posting...' : 'Post Gig'}
                         </Button>
                     </div>
                 </form>

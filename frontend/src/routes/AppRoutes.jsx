@@ -12,14 +12,9 @@ import Profile from '../pages/Profile';
 import HowItWorks from '../pages/HowItWorks';
 import Settings from '../pages/Settings';
 import Applications from '../pages/Applications';
-import ContractSigning from '../pages/ContractSigning';
-import ActiveContract from '../pages/ActiveContract';
-import SubmitWork from '../pages/SubmitWork';
-import ReviewDeliverables from '../pages/ReviewDeliverables';
 import Notifications from '../pages/Notifications';
 import Messages from '../pages/Messages';
 import Payments from '../pages/Payments';
-import EscrowPayment from '../pages/EscrowPayment';
 
 const AppRoutes = () => {
   const { pathname } = useLocation();
@@ -91,46 +86,6 @@ const AppRoutes = () => {
         <Layout>
           <ProtectedRoute>
             <Applications />
-          </ProtectedRoute>
-        </Layout>
-      } />
-      
-      <Route path="/escrow/:applicationId" element={
-        <Layout>
-          <ProtectedRoute>
-            <EscrowPayment />
-          </ProtectedRoute>
-        </Layout>
-      } />
-      
-      <Route path="/contract/:contractId" element={
-        <Layout>
-          <ProtectedRoute>
-            <ContractSigning />
-          </ProtectedRoute>
-        </Layout>
-      } />
-      
-      <Route path="/contracts/:contractId" element={
-        <Layout>
-          <ProtectedRoute>
-            <ActiveContract />
-          </ProtectedRoute>
-        </Layout>
-      } />
-      
-      <Route path="/submit/:contractId/:phaseId" element={
-        <Layout>
-          <ProtectedRoute>
-            <SubmitWork />
-          </ProtectedRoute>
-        </Layout>
-      } />
-      
-      <Route path="/review/:contractId/:phaseId" element={
-        <Layout>
-          <ProtectedRoute>
-            <ReviewDeliverables />
           </ProtectedRoute>
         </Layout>
       } />
